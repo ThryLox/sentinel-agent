@@ -1,0 +1,25 @@
+# Binaries
+*.exe
+*.dll
+*.dylib
+sentinel-agent-linux
+
+# Data & Config
+events.db
+events.db-shm
+events.db-wal
+config.toml
+
+# Logs & Dumps
+*.log
+quarantine/
+malware_snapshot*
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store

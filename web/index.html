@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel // Overwatch</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #030712;
+            --surface: #0f172a;
+            --surface-glass: rgba(15, 23, 42, 0.6);
+            --primary: #3b82f6;
+            --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.5);
+            --success: #22c55e;
+            --text: #f8fafc;
+            --text-dim: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(239, 68, 68, 0.1) 0%, transparent 40%);
+        }
+
+        /* Scanline Anim */
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        header {
+            width: 100%;
+            max-width: 1200px;
+            padding: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--surface);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.05em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand span {
+            color: var(--danger);
+            text-shadow: 0 0 20px var(--danger);
+        }
+
+        .status-badge {
+            background: var(--surface);
+            padding: 0.5rem 1rem;
+            border-radius: 99px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-dim);
+            transition: 0.3s;
+        }
+
+        .dot.online {
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        main {
+            width: 100%;
+            max-width: 1200px;
+            padding: 2rem;
+            display: grid;
+            gap: 2rem;
+        }
+
+        /* HERO STATS */
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--surface-glass);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+            transition: 0.3s;
+        }
+
+        .stat-card:hover {
+            content: "";
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-card.danger {
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .stat-card.danger:hover {
+            box-shadow: 0 0 40px var(--danger-glow);
+        }
+
+        .label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+        }
+
+        .number {
+            font-size: 4rem;
+            font-weight: 700;
+            line-height: 1;
+            background: linear-gradient(to bottom, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .number.red {
+            background: linear-gradient(to bottom, var(--danger), #991b1b);
+            -webkit-background-clip: text;
+            text-shadow: 0 0 30px var(--danger-glow);
+        }
+
+        /* FEED */
+        .feed-container {
+            margin-top: 2rem;
+        }
+
+        .feed-header {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .violation-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .event-row {
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.05), transparent);
+            border-left: 2px solid var(--danger);
+            padding: 1.5rem;
+            border-radius: 0 12px 12px 0;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 1.5rem;
+            animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateX(-20px);
+            position: relative;
+        }
+
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .time {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        .details {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .details .title {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .details .meta {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--danger);
+        }
+
+        .type-badge {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem;
+            color: var(--text-dim);
+            font-style: italic;
+            border-radius: 12px;
+        }
+
+        /* Visualization Grid (Restored) */
+        .vis-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .vis-card {
+            background: var(--surface-glass);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 1.5rem;
+            border-radius: 12px;
+        }
+        .bar-container {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .bar-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero-stats {
+                grid-template-columns: 1fr;
+            }
+            .vis-container {
+                grid-template-columns: 1fr;
+            }
+            header {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .event-row {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="brand">SENTINEL <span>//</span> AGENT</div>
+        <div style="display:flex; gap:15px; align-items:center;">
+            <button onclick="fetch('/api/v1/mock_anomaly', {method: 'POST'})" 
+                style="background:var(--danger); color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:bold; cursor:pointer;" 
+                title="Bypasses normal analytics and injects a fake ransomware detection for UI testing">
+                MOCK THREAT DETECTED!
+            </button>
+            <div class="status-badge">
+                <div class="dot" id="status-dot"></div>
+                <span id="status-text">CONNECTING...</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="hero-stats">
+            <div class="stat-card danger">
+                <div class="label">Total Violations</div>
+                <div class="number red" id="val-violations">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">System Load</div>
+                <div class="number" style="font-size: 2.5rem; color: var(--primary);" id="val-sysload">0 MB</div>
+                <div style="font-size: 0.75rem; color: var(--text-dim); margin-top:5px;">RAM USAGE (Alloc)</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Efficiency</div>
+                <div class="number" style="font-size: 2.5rem; color: var(--success);" id="val-goroutines">...</div>
+                <div style="font-size: 0.75rem; color: var(--text-dim); margin-top:5px;">ACTIVE GOROUTINES</div>
+            </div>
+        </div>
+
+        <div class="vis-container">
+            <div class="vis-card">
+                <div class="label">Memory (Heap)</div>
+                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                    <span style="font-size: 1.5rem; font-weight:700;" id="mem-val">0.0 MB</span>
+                    <span style="font-size: 0.8rem; color:var(--text-dim);">Max 15MB Target</span>
+                </div>
+                <div class="bar-container">
+                    <div class="bar-fill" id="mem-bar" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="vis-card">
+                <div class="label">System Overhead</div>
+                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                    <span style="font-size: 1.5rem; font-weight:700;" id="sys-val">0.0 MB</span>
+                    <span style="font-size: 0.8rem; color:var(--text-dim);">OS Reserved</span>
+                </div>
+                <div class="bar-container">
+                    <div class="bar-fill" id="sys-bar" style="width: 0%; background: var(--text-dim); box-shadow:none;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="feed-container">
+            <div class="feed-header">
+                Active Threats
+                <div style="font-size: 0.8rem; color: var(--text-dim); font-weight: 400;">LIVE FEED</div>
+            </div>
+            <div id="violation-feed" class="violation-grid">
+                <div class="empty-state">No active threats detected. System secure.</div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const feed = document.getElementById('violation-feed');
+        let knownEvents = new Set();
+
+        async function loop() {
+            try {
+                const res = await fetch('/api/v1/metrics');
+                const data = await res.json();
+
+                const lastSeen = new Date(data.stats.agent_last_seen);
+                const isOnline = (Date.now() - lastSeen) < 10000;
+
+                document.getElementById('status-dot').className = isOnline ? 'dot online' : 'dot';
+                document.getElementById('status-text').innerText = isOnline ? 'ONLINE' : 'OFFLINE';
+                document.getElementById('status-text').style.color = isOnline ? 'var(--success)' : 'var(--text-dim)';
+
+                document.getElementById('val-violations').innerText = data.stats.violation_count || 0;
+
+                const healthEvents = data.events.filter(e => e.type === 'agent_health');
+                if (healthEvents.length > 0) {
+                    const latest = healthEvents[healthEvents.length - 1];
+                    try {
+                        const p = JSON.parse(latest.payload);
+
+                        document.getElementById('val-sysload').innerText = p.alloc_mb.toFixed(1) + " MB";
+                        document.getElementById('val-goroutines').innerText = p.goroutines;
+
+                        document.getElementById('mem-val').innerText = p.alloc_mb.toFixed(2) + " MB";
+                        const memPct = Math.min((p.alloc_mb / 15) * 100, 100);
+                        document.getElementById('mem-bar').style.width = memPct + "%";
+
+                        document.getElementById('sys-val').innerText = p.sys_mb.toFixed(2) + " MB";
+                        const sysPct = Math.min((p.sys_mb / 50) * 100, 100);
+                        document.getElementById('sys-bar').style.width = sysPct + "%";
+                    } catch (e) { console.error("Parse health error", e); }
+                }
+
+                // 4. Unified Feed Mapping (HITL Alerts & Policy Violations)
+                const alerts = data.events.filter(e => e.type === 'ai_alert' || e.type === 'policy_violation');
+                if (alerts.length > 0) {
+                    if (feed.querySelector('.empty-state')) feed.innerHTML = '';
+                    
+                    alerts.forEach(v => {
+                        const id = "alert_" + v.timestamp + v.payload;
+                        if (knownEvents.has(id)) return;
+                        knownEvents.add(id);
+
+                        let p;
+                        try { p = JSON.parse(v.payload); } catch (e) { return; }
+                        
+                        // Handle legacy policy structures natively
+                        let agentID = p.agent_id || "Local_Agent";
+                        let processName = p.process ? p.process.name : "unknown_threat";
+                        const b64Payload = btoa(processName);
+                        
+                        const el = document.createElement('div');
+                        el.className = 'event-row';
+                        el.style.borderLeftColor = 'var(--primary)';
+                        el.style.background = 'linear-gradient(90deg, rgba(59, 130, 246, 0.05), transparent)';
+                        el.style.flexWrap = 'wrap';
+                        
+                        el.innerHTML = `
+                            <div class="time">${new Date(v.timestamp).toLocaleTimeString()}</div>
+                            <div class="details">
+                                <div class="title" style="color:var(--primary);">⚠️ THREAT SUSPENDED IN RAM [HITL REVIEW]</div>
+                                <div class="meta" style="color:var(--text);"><span style="color:var(--primary)">Target:</span> Host ${agentID} autonomously froze <span style="color:var(--primary); font-size:1.2rem; font-weight:900;">\`${processName}\`</span>.</div>
+                            </div>
+                            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                                <button onclick="fetch('/api/v1/enforce_kill?agent=${agentID}&payload=${b64Payload}', {method:'POST'}).then(() => { this.innerText='KILLED!'; this.disabled=true; this.style.background='var(--success)'; this.nextElementSibling.style.display='none'; })" 
+                                    style="background:var(--danger); color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:bold; cursor:pointer; flex: 1;"
+                                >QUARANTINE & KILL</button>
+                                
+                                <button onclick="fetch('/api/v1/resume_process?agent=${agentID}&payload=${b64Payload}', {method:'POST'}).then(() => { this.innerText='RESUMED'; this.disabled=true; this.style.background='var(--text-dim)'; this.previousElementSibling.style.display='none'; })" 
+                                    style="background:transparent; color:var(--text); border:1px solid var(--text-dim); padding:8px 16px; border-radius:6px; font-weight:bold; cursor:pointer; flex: 1;"
+                                >IGNORE (RESUME)</button>
+                            </div>
+                        `;
+                        feed.insertBefore(el, feed.firstChild);
+                        if (feed.children.length > 20) feed.lastChild.remove();
+                    });
+                }
+
+            } catch (e) {
+                document.getElementById('status-dot').className = 'dot';
+                document.getElementById('status-text').innerText = 'OFFLINE';
+            }
+        }
+
+        setInterval(loop, 1000);
+        loop(); 
+    </script>
+</body>
+
+</html>
