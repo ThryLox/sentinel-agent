@@ -1,0 +1,15 @@
+services:
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:latest
+    container_name: aura-victoriametrics
+    ports:
+      - "8428:8428"
+    command:
+      - "--storageDataPath=/vmetrics-data"
+      - "--retentionPeriod=1" # Retain data for 1 month for lightweight edge logic
+    restart: unless-stopped
+    volumes:
+      - vmdata:/vmetrics-data
+
+volumes:
+  vmdata:
