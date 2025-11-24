@@ -1,0 +1,15 @@
+﻿Initial release: MVP Windows endpoint agent (single-file exe).
+
+Artifacts:
+- agent.exe (release asset)
+
+Checksum (SHA256):
+- agent.exe: 886D20A88DBD9119AC9538587B37485FE239C533E4DE48BED18AB98739C34239
+
+Notes: The Windows agent executable was intentionally removed from the repository main branch to keep the repository clean; the binary is available as a release asset.
+
+GPG signing instructions:
+- If you publish signed artifacts, include both the signature file (checksums.txt.sig) and the public signing key.
+- To verify signatures locally: 1) import the publisher's public key: gpg --import publisher_pubkey.asc 2) download the checksums file and its signature. 3) verify: gpg --verify checksums.txt.sig checksums.txt 4) check the SHA256 of the artifact: sha256sum agent.exe | Select-String  886D20A88DBD9119AC9538587B37485FE239C533E4DE48BED18AB98739C34239
+
+This release will be augmented by a GitHub Actions workflow that auto-builds platform binaries and uploads checksums and optional GPG signatures when you push a tag (see .github/workflows/release.yml).
