@@ -5,6 +5,10 @@ on:
     tags:
       - "v*"
 
+permissions:
+  id-token: write
+  contents: write
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
@@ -37,25 +41,66 @@ jobs:
           zip -r sentinel-agent-darwin-amd64.zip sentinel-agent-darwin-amd64 || true
           sha256sum *.zip > checksums.txt
 
-      - name: (Optional) Import GPG key
-        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
+      - name: Install cosign (Sigstore)
         run: |
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          # Download prebuilt cosign binary for linux runner
+          COSIGN_URL="https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64"
+          curl -sLo cosign "$COSIGN_URL"
+          chmod +x cosign
+          sudo mv cosign /usr/local/bin/cosign
+          cosign version || true
+
+      - name: Sign artifacts with cosign (keyless via OIDC)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cd build
+          # Sign checksums.txt (outputs checksums.txt.sig)
+          cosign sign-blob --keyless --output-signature checksums.txt.sig checksums.txt
+
+          # Sign each archive (produces <file>.sig alongside each zip)
+          for f in *.zip; do
+            echo "Signing $f"
+            cosign sign-blob --keyless --output-signature "$f.sig" "$f"
+          done
+
+      - name: (Optional) Import GPG key (guarded)
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-
-      - name: (Optional) Sign checksums
-        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
         run: |
-          gpg --output checksums.txt.sig --detach-sign checksums.txt
+          if [ -n "$GPG_PRIVATE_KEY" ]; then
+            echo "Importing GPG private key"
+            echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          else
+            echo "GPG_PRIVATE_KEY not set; skipping GPG import"
+          fi
 
-      - name: Create Release and upload artifacts
+      - name: (Optional) Sign checksums (guarded)
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          if [ -n "$GPG_PRIVATE_KEY" ]; then
+            echo "Signing checksums with GPG"
+            if [ -n "$GPG_PASSPHRASE" ]; then
+              echo "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --output checksums.txt.sig --detach-sign checksums.txt
+            else
+              gpg --batch --yes --output checksums.txt.sig --detach-sign checksums.txt
+            fi
+          else
+            echo "GPG_PRIVATE_KEY not set; skipping signing"
+          fi
+
+      - name: Create Release and upload artifacts + signatures
         uses: softprops/action-gh-release@v1
         with:
           files: |
             build/sentinel-agent-windows-amd64.zip
+            build/sentinel-agent-windows-amd64.zip.sig
             build/sentinel-agent-linux-amd64.zip
+            build/sentinel-agent-linux-amd64.zip.sig
             build/sentinel-agent-darwin-amd64.zip
+            build/sentinel-agent-darwin-amd64.zip.sig
             build/checksums.txt
             build/checksums.txt.sig
         env:
