@@ -41,28 +41,25 @@ jobs:
           zip -r sentinel-agent-darwin-amd64.zip sentinel-agent-darwin-amd64 || true
           sha256sum *.zip > checksums.txt
 
-      - name: Install cosign (Sigstore)
-        run: |
-          # Download prebuilt cosign binary for linux runner
-          COSIGN_URL="https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64"
-          curl -sLo cosign "$COSIGN_URL"
-          chmod +x cosign
-          sudo mv cosign /usr/local/bin/cosign
-          cosign version || true
+      - name: Sign checksums with sigstore/cosign-action
+        uses: sigstore/cosign-action@v2
+        with:
+          args: sign-blob --output-signature build/checksums.txt.sig build/checksums.txt
 
-      - name: Sign artifacts with cosign (keyless via OIDC)
-        env:
-          COSIGN_EXPERIMENTAL: "1"
-        run: |
-          cd build
-          # Sign checksums.txt (outputs checksums.txt.sig)
-          cosign sign-blob --output-signature checksums.txt.sig checksums.txt
+      - name: Sign windows artifact with sigstore/cosign-action
+        uses: sigstore/cosign-action@v2
+        with:
+          args: sign-blob --output-signature build/sentinel-agent-windows-amd64.zip.sig build/sentinel-agent-windows-amd64.zip
 
-          # Sign each archive (produces <file>.sig alongside each zip)
-          for f in *.zip; do
-            echo "Signing $f"
-            cosign sign-blob --output-signature "$f.sig" "$f"
-          done
+      - name: Sign linux artifact with sigstore/cosign-action
+        uses: sigstore/cosign-action@v2
+        with:
+          args: sign-blob --output-signature build/sentinel-agent-linux-amd64.zip.sig build/sentinel-agent-linux-amd64.zip
+
+      - name: Sign darwin artifact with sigstore/cosign-action
+        uses: sigstore/cosign-action@v2
+        with:
+          args: sign-blob --output-signature build/sentinel-agent-darwin-amd64.zip.sig build/sentinel-agent-darwin-amd64.zip
 
       - name: (Optional) Import GPG key (guarded)
         env:
