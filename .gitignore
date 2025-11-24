@@ -1,0 +1,16 @@
+# Ignore build artifacts
+/cmd/agent/*.exe
+/cmd/agent/*.exe~
+*.exe
+*.exe~
+
+# Go build and vendor
+/bin/
+/pkg/
+*.test
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+.DS_Store

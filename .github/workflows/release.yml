@@ -1,0 +1,62 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+
+      - name: Build binaries
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p build
+          # Windows exe
+          GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o build/sentinel-agent-windows-amd64.exe ./cmd/agent
+          # Linux binary
+          GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o build/sentinel-agent-linux-amd64 ./cmd/agent
+          # Darwin (optional)
+          GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o build/sentinel-agent-darwin-amd64 ./cmd/agent
+
+      - name: Create archives
+        run: |
+          cd build
+          zip -r sentinel-agent-windows-amd64.zip sentinel-agent-windows-amd64.exe
+          zip -r sentinel-agent-linux-amd64.zip sentinel-agent-linux-amd64
+          zip -r sentinel-agent-darwin-amd64.zip sentinel-agent-darwin-amd64 || true
+          sha256sum *.zip > checksums.txt
+
+      - name: (Optional) Import GPG key
+        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: (Optional) Sign checksums
+        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
+        run: |
+          gpg --output checksums.txt.sig --detach-sign checksums.txt
+
+      - name: Create Release and upload artifacts
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/sentinel-agent-windows-amd64.zip
+            build/sentinel-agent-linux-amd64.zip
+            build/sentinel-agent-darwin-amd64.zip
+            build/checksums.txt
+            build/checksums.txt.sig
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
