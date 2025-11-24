@@ -56,12 +56,12 @@ jobs:
         run: |
           cd build
           # Sign checksums.txt (outputs checksums.txt.sig)
-          cosign sign-blob --keyless --output-signature checksums.txt.sig checksums.txt
+          cosign sign-blob --output-signature checksums.txt.sig checksums.txt
 
           # Sign each archive (produces <file>.sig alongside each zip)
           for f in *.zip; do
             echo "Signing $f"
-            cosign sign-blob --keyless --output-signature "$f.sig" "$f"
+            cosign sign-blob --output-signature "$f.sig" "$f"
           done
 
       - name: (Optional) Import GPG key (guarded)
